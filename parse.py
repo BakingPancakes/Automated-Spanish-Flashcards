@@ -19,6 +19,8 @@ class Parse():
         self.word_types = ['TRANSITIVE','INTRANSITIVE','PRONOMINAL','REFLEXIVE','RECIPROCAL','MASCULINE','FEMININE','ADJECTIVE','PHRASE','INTERJECTION','PRONOUN','ADVERB','PREPOSITION','CONJUNCTION','ARTICLE']
 
         # utility for logic
+        self.subdefinition_number = 1
+        self.subtranslation_letter = 'a'
 
     def parseHeader(self,i)-> int:
         while i < self.length:
@@ -46,6 +48,17 @@ class Parse():
 
             i += 1
         return i
+    
+    def parseSubword(self,i)-> int:
+        while self.contents[i] not in self.word_types:
+            subwords = []
+            subwords.append(self.contents[i])
+            if self.contents[i+1] in self.word_types:
+                self.definition['subword'] = " ".join(subwords)
+                i += 1
+                break
+            i += 1
+        return i
 
     def parseAll(self):
         """finds the identity of each label by finding the position of each in relation to each other """
@@ -56,20 +69,15 @@ class Parse():
         
         i = 0 # global position index of contents
         i = self.parseHeader(i)
-            
-            
-        #* subword
-        while self.contents[i] not in self.word_types:
-            subwords = []
-            subwords.append(self.contents[i])
-            if self.contents[i+1] in self.word_types:
-                self.definition['subword'] = " ".join(subwords)
+        i = self.parseSubword(i)
+        while self.contents[i] != 'Copyright':
+
+            #* type
+            # if self.contents[i].startswith((str(self.subdefinition_number) + '.')):
+            #     break          
+
+            #* increments index at end of run NOTE: index can increment throughout code
             i += 1
-
-        #* type
-
-        #* increments index at end of run NOTE: index can increment throughout code
-        i += 1
 
 
 parser = Parse()
