@@ -10,7 +10,7 @@ class Definition():
             'type':[],
             'details':[
                 {'subdefinitions':[
-                    {'subdefinition':'1. subdefinition','subtranslations':[
+                    {'subdefinition':'1. (subdefinition)','subtranslations':[
                         {'subtranslation':'a. subtranslation','example':'...'}
                     ]} 
                 ]}
