@@ -59,6 +59,15 @@ class Parse():
                 break
             i += 1
         return i
+    
+    def parseType(self,i):
+        pass
+
+    def parseSubdef(self,i):
+        pass
+
+    def parseSubtrans(self,i):
+        pass
 
     def parseAll(self):
         """finds the identity of each label by finding the position of each in relation to each other """
@@ -69,12 +78,15 @@ class Parse():
         
         i = 0 # global position index of contents
         i = self.parseHeader(i)
-        i = self.parseSubword(i)
         while self.contents[i] != 'Copyright':
+            i = self.parseSubword(i)
+            i = self.parseType(i)
+            i = self.parseSubdef(i)
+            i = self.parseSubtrans(i)
 
             #* type
             # if self.contents[i].startswith((str(self.subdefinition_number) + '.')):
-            #     break          
+            #     break
 
             #* increments index at end of run NOTE: index can increment throughout code
             i += 1
