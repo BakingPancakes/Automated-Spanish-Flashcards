@@ -77,9 +77,3 @@ class Parse():
             
             #* increments index at end of run NOTE: index can increment throughout code
             i += 1
-
-
-parser = Parse()
-parser.parseAll()
-contents = parser.definition
-print(contents)
