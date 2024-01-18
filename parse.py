@@ -53,7 +53,7 @@ class Parse():
     
     def parseType(self,i)-> int:
         if self.contents[i].startswith((str(self.subdefinition_number) + '.')):
-            
+            pass
         return i
 
     def parseSubdef(self,i)-> int:
