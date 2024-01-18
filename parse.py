@@ -23,8 +23,11 @@ class Parse():
         self.subtranslation_letter = 'a'
 
     def parseHeader(self,i)-> int:
-        #! doesn't check for instances where speaker_symbols are transcribed differently by API
-        #! list comprehension through whole contnets might be inefficient with large screenshots
+        #! Doesn't check for instances where speaker_symbols are transcribed differently
+        #!    by API (besides '#)' and '<'), or if speaker symbols are encountered above word
+        #!    (ad, search bar, etc.) since parsing begins at index 0
+
+        #! list comprehension through whole contents might be inefficient with large screenshots
 
         speaker_symbol_indexes = [self.contents.index(symbol) for symbol in self.speaker_symbols if symbol in self.contents]
         self.definition['word'] = ' '.join(self.contents[0:speaker_symbol_indexes[0]])
@@ -39,18 +42,18 @@ class Parse():
     
     def parseSubword(self,i)-> int:
         subwords = []
-        while self.contents[i] not in self.word_types:
-            subwords.append(self.contents[i])
-            if self.contents[i+1] in self.word_types:
-                self.definition['subword'].append(" ".join(subwords))
+        while self.contents[i] not in self.word_types: # as long as word isn't a word type, ex. MASCULINE
+            subwords.append(self.contents[i])          # add term as part of subword
+            if self.contents[i+1] in self.word_types:  # check if next word is word type
+                self.definition['subword'].append(" ".join(subwords)) # if a word type, add subwords, exit loop
                 i += 1
                 break
             i += 1
         return i
     
     def parseType(self,i)-> int:
-        # if self.contents[i].startswith((str(self.subdefinition_number) + '.')):
-            #     break
+        if self.contents[i].startswith((str(self.subdefinition_number) + '.')):
+            pass
         return i
 
     def parseSubdef(self,i)-> int:
@@ -60,9 +63,9 @@ class Parse():
         return i
 
     def parseAll(self):
-        """finds the identity of each label by finding the position of each in relation to each other """
+        """Finds the identity of each label by 
+            finding the position of each in relation to each other."""
 
-        # ! following assumes speaker_symbols isn't encountered in an ad, etc.
         # TODO: Pop-ups before word, and 'Usage note' after translation
         #? make a global var for self.content[i]? or does the manipulation of i within code make this difficult
         
