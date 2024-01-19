@@ -59,13 +59,13 @@ class Parse():
         self.definition['tabs'].append(self.tabs)
         i += len(self.tabs)
 
-        return i
+        return i #? necessary?
     
-    def parseSubword(self,i)-> int:
+    def parseSubword(self)-> int:
         #* Scan backwards from type_indexes[i] until 1) Encounters an element from 'tabs'
         #*                                           2) Ecounters a word ending in punctuation
         subwords = []
-        type_index = self.type_indexes.get(False) # will be accessed again in parseType
+        type_index = self.type_indexes.get_nowait() # will be accessed again in parseType
         curr_index = type_index - 1
         while curr_index > 0:
             word = self.contents[curr_index]
@@ -75,14 +75,22 @@ class Parse():
             subwords.insert(0,word)
             curr_index -= 1
 
-    def parseType(self,i)-> int:
+        self.parseType(' '.join(subwords))
+
+    def parseType(self,subword)-> int:
         #* From type_indexes until next item in numbered_item_indexes
-        type_index = self.type_indexes.get()
+        type_index = self.type_indexes.get_nowait()
         number_index = self.numbered_item_indexes.get(False) # will be accessed again in parseSubdef
         self.definition['type'].append(self.contents[type_index+1:number_index])
-        return i
 
-    def parseSubdef(self,i)-> int:
+        subdefinition_index = 0
+        match self.parseSubdef(subdefinition_index):
+            case 'found subword': # exit to parse subword to label new subword
+                return #? need to do anything?
+            case 'found new type': # exit to parseType and copy last subword
+                self.parseType(subword)
+
+    def parseSubdef(self,subdefinition_index)-> int:
         #* From numbered[i] until next item in lettered_item_indexes
         number_index = self.numbered_item_indexes.get()
         lettered_index = self.lettered_item_indexes.get(False) # will be accessed again in parseSubtrans
@@ -91,21 +99,25 @@ class Parse():
                 {'subtranslation':'a. subtranslation','example':'...'}
             ]} 
         ]}
-        subdefinition_index = 0
         #! need a method of keeping track of subdefinition indexes between adding subtranslations
         new_subdefinition['subdefinitions'][subdefinition_index]['subdefinition'] = self.contents[number_index:lettered_index]
 
         self.definition['details'].append(new_subdefinition)
         # some conditional that ends when parsesubtrans says so
-        self.parseSubtrans(0,subdefinition_index)
-        return i
+        subtranslation_index = 0 #! increments if there are more subtranslations
+        match self.parseSubtrans(subdefinition_index, subtranslation_index):
+            case 'found subword': # exit to parse subword to label new subword
+                'found subword'
+            case 'found numbered_item': # exit to parseSubdef to label new subdefinition
+                self.parseSubdef(subdefinition_index + 1)
+            case 'found new type': # exit to parseType and copy last subword
+                return 'found new type'
 
-    def parseSubtrans(self,i,subdefinition_index)-> int:
+    def parseSubtrans(self,subdefinition_index, subtranslation_index)-> int:
         #* From lettered_item_indexes until word starting in capital letter
         lettered_index = self.lettered_item_indexes.get()
         curr_index = lettered_index
         subtrans = []
-        subtranslation_index = 0 #! increments if there are more subtranslations
         while curr_index < self.length: #! terminates when reaches end of data, but doesn't add all to definition
             word = self.contents[curr_index]
             for item in self.punctuation:
@@ -119,40 +131,45 @@ class Parse():
 
         match self.parseExample(curr_index):
             case 'found lettered_item':
-                self.parseSubtrans(0, subtranslation_index + 1)
+                self.parseSubtrans(subdefinition_index,subtranslation_index + 1)
             
             case 'found subword': # exit to parse subword to label new subword
-                return 'found subword' #! parseSubtrans call needs to check for this and parse subword again
+                return 'found subword'
             
             case 'found numbered_item': # exit to parseSubdef to label new subdefinition
                 return 'found numbered_item'
             
-            case 'found word_type': # exit to parseType and copy last subword
-                return 'found word_type'
-
-        return i
+            case 'found new type': # exit to parseType and copy last subword
+                return 'found new type'
     
-    def parseExample(self,curr_index):
+    def parseExample(self,subdefinition_index,subtranslation_index,curr_index):
         #* Example: From last stop (first word starting in capital letter) - Need to create conditional in case begins with punctuation
         #*          To next letter item, a lowercase letter following a period (subword), next number, word type
         #? conditions could alternatively be met by comparing the order of each index (only applicable to letter item, next number, next type) wouldn't apply to lowercase letter after a period?
         while curr_index < self.length:
+            example = []
             word = self.contents[curr_index]            
             # True = parse for a subtranslation again
             if curr_index == self.contents[self.lettered_item_indexes.get(False)]:
+                self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found lettered_item'
-            
+
             # True = exit to parseSubword to label new subword
             if self.contents[curr_index].endswith('.') and self.contents[curr_index][0].islower():
+                self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found subword'
             
             # True = exit to parseSubdef to label new subdefinition
             if curr_index == self.contents[self.numbered_item_indexes.get(False)]:
+                self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found numbered_item'
             
             # True = exit to parseType and copy last subword 
             if self.contents[curr_index] in self.word_types:
-                return 'found word_type'
+                self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
+                return 'found new type'
+            
+            example.append(word)
             curr_index += 1
     
     def checkEndingKeyword(self,i):
@@ -168,7 +185,7 @@ class Parse():
         
         i = 0 # global position index of contents
         i = self.parseHeader(i)
-        i = self.parseSubword(i)
+        i = self.parseSubword()
         wontRunYet = False
         if wontRunYet:
             while self.contents[i] != 'Copyright':
