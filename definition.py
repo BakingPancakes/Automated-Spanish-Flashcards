@@ -9,11 +9,12 @@ class Definition():
             'subword':[],
             'type':[],
             'details':[
-                {'subdefinitions':[
-                    {'subdefinition':'1. (subdefinition)','subtranslations':[
-                        {'subtranslation':'a. subtranslation','example':'...'}
-                    ]} 
-                ]}
+                #* Outline of what should be entered
+                # {'subdefinitions':[
+                #     {'subdefinition':'1. (subdefinition)','subtranslations':[
+                #         {'subtranslation':'a. subtranslation','example':'...'}
+                #     ]} 
+                # ]}
             ]
         }
 
