@@ -4,7 +4,7 @@ from parse import Parse
 class TestParse(unittest.TestCase):
 
     def setUp(self):
-        self.parser = Parse()
+        self.parser = Parse('imgs/calvo.png')
 
     def test_CalvoWordToSubword(self):
         self.parser.parseAll()
@@ -13,7 +13,12 @@ class TestParse(unittest.TestCase):
             'translation':'bald',
             'tabs':['Dictionary','Examples','Phrases'],
             'subword':['calvo'],
-            'details':[{'subdefinitions': [{'subdefinition': '1. (without hair)', 'subtranslations': [{'subtranslation': 'a. bald', 'example': 'A los 30 ya se estaba quedando calvo, asi que decidiï¿½ raparse la cabeza. At thirty he was already going bald, so he decided to shave his head.'}]}]}]
+            'details':[
+                {'subdefinitions':
+                 [{'subdefinition': '1. (without hair)', 'subtranslations': 
+                   [{'subtranslation': 'a. bald', 'example': 'A los 30 ya se estaba quedando calvo, así que decidió raparse la cabeza. At thirty he was already going bald, so he decided to shave his head.'}]
+                 }]
+                }]
         }
         contents = self.parser.definition
         self.assertEqual(contents['word'],calvo_correct['word'])

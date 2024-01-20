@@ -2,16 +2,15 @@ import ast
 from collections import deque
 import string
 
-from definition import *
+from definition import Definition
+from API.ImageToText import ImageToText
 
 
 class Parse():
-    def __init__(self):
+    def __init__(self,file_name):
         # read screenshot contents to a list
-        #! this should be moved to future main.py function instead of initialized here
-        with open('raw_data/calvo.txt', 'r') as f:
-            contents = f.read()
-        self.contents = ast.literal_eval(contents) # a list of text top left-bottom right, separated by space
+        itt = ImageToText()
+        self.contents = itt.get_image_dataAPI(file_name)
         
         # initialize definition object
         self.definition = Definition().definition
@@ -47,27 +46,31 @@ class Parse():
                 self.lettered_item_indexes.append(self.contents.index(word))
                 lettered_item = chr(ord(lettered_item) + 1)
 
-    def parseHeader(self,i)-> int:
+    def parseHeader(self)-> int:
         #! Doesn't check for instances where speaker_symbols are transcribed differently
         #!    by API (besides '#)' and '<'), or if speaker symbols are encountered above word
         #!    (ad, search bar, etc.) since parsing begins at index 0
         #! Doesn't ensure ending keyword is always last thing encountered
 
         self.definition['word'] = ' '.join(self.contents[0:self.speaker_symbol_indexes[0]])
-        self.definition['translation'] = ' '.join(self.contents[self.speaker_symbol_indexes[0]+1:self.speaker_symbol_indexes[1]])
-        i += self.speaker_symbol_indexes[-1] + 1
+        try:
+            self.definition['translation'] = ' '.join(self.contents[self.speaker_symbol_indexes[0]+1:self.speaker_symbol_indexes[1]])
+        except:
+            self.definition['translation'] = ' '.join(self.contents[self.speaker_symbol_indexes:self.tabs.index(self.tabs[0])])
 
         self.definition['tabs'] = self.tabs
-        i += len(self.tabs)
-
-        return i #? necessary?
     
     def parseSubword(self)-> int:
         #* Scan backwards from type_indexes[i] until 1) Encounters an element from 'tabs'
         #*                                           2) Ecounters a word ending in punctuation
         subwords = []
-        type_index = self.type_indexes[0] # will be accessed again in parseType
-        curr_index = type_index - 1
+        #! no more type_indexes -> no other sections, t.f. exit
+        try:
+            type_index = self.type_indexes[0] # will be accessed again in parseType
+            curr_index = type_index - 1
+        except: # no more sections (under a type) to parse
+            return
+        
         while curr_index > 0:
             word = self.contents[curr_index]
             if (word in self.all_tabs) or (word in self.punctuation): # more concise if change while conditon to this?
@@ -84,12 +87,15 @@ class Parse():
 
     def parseType(self,subword)-> int:
         #* From type_indexes until next item in numbered_item_indexes
-        type_index = self.type_indexes.popleft()
-        number_index = self.numbered_item_indexes[0] # will be accessed again in parseSubdef
+        #! no other numbered_items -> SS is cutoff, t.f. exit
+        try:
+            type_index = self.type_indexes.popleft()
+            number_index = self.numbered_item_indexes[0]
+        except:
+            return 'reached end'
         self.definition['type'].append(' '.join(self.contents[type_index:number_index]))
 
         subdefinition_index = 0
-        #! keep track of section index (anything below a type)
         type_index = 0
         match self.parseSubdef(type_index,subdefinition_index):
             case 'reached end':
@@ -101,18 +107,19 @@ class Parse():
 
     def parseSubdef(self,type_index,subdefinition_index)-> int:
         #* From numbered[i] until next item in lettered_item_indexes
+        #! need to check for empty lettered_items_indexes?
         number_index = self.numbered_item_indexes.popleft()
         lettered_index = self.lettered_item_indexes[0] # will be accessed again in parseSubtrans
+
         new_subdefinition = {'subdefinitions':[
             {'subdefinition':'1. (subdefinition)','subtranslations':[
                 {'subtranslation':'a. subtranslation','example':'...'}
             ]} 
         ]}
-        #! need a method of keeping track of subdefinition indexes between adding subtranslations
         new_subdefinition['subdefinitions'][subdefinition_index]['subdefinition'] = ' '.join(self.contents[number_index:lettered_index])
 
         self.definition['details'].append(new_subdefinition)
-        subtranslation_index = 0 #! increments if there are more subtranslations
+        subtranslation_index = 0
         match self.parseSubtrans(type_index,subdefinition_index, subtranslation_index):
             case 'reached end':
                 return 'reached end'
@@ -130,9 +137,8 @@ class Parse():
         subtrans = []
         while curr_index < self.length: #! terminates when reaches end of data, but doesn't add all to definition
             word = self.contents[curr_index]
-            for item in self.punctuation: #! still not sure if this is valid
-                if item in word:
-                    word.replace(item,'')
+            if word[0] not in string.ascii_letters: # filters out punctuation in first index
+                word = word[0:-1]
             if word[0].isupper():
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['subtranslation'] = ' '.join(subtrans)
                 break
@@ -165,11 +171,11 @@ class Parse():
             if word == '-':
                 curr_index += 1
                 continue
-            if word in self.ending_keyphrases:
+            if word in self.ending_keyphrases or curr_index+1 == self.length:
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'reached end'                
             # True = parse for a subtranslation again
-            #! need to check if lettered_item_index is available
+            #! need to check if lettered_item_index is empty
             if len(self.lettered_item_indexes) != 0 and curr_index == self.contents[self.lettered_item_indexes[0]]: #! remove item instead?
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found lettered_item'
@@ -191,32 +197,18 @@ class Parse():
             
             example.append(word)
             curr_index += 1
-    
-    def checkEndingKeyword(self,i):
-        # should check if position is one of ending_keyphrases
-        pass 
 
     def parseAll(self):
         """Finds the identity of each label by 
-            finding the position of each in relation to each other."""
+            finding the position of each in relation to each other.
+            Returns the labeled definition information."""
 
         # TODO: Pop-ups before word, and 'Usage note' after translation
-        #? make a global var for self.content[i]? or does the manipulation of i within code make this difficult
-        
-        i = 0 # global position index of contents
-        i = self.parseHeader(i)
-        i = self.parseSubword()
-        probablyDontNeed = False
-        if probablyDontNeed:
-            while self.contents[i] != 'Copyright':
-                i = self.parseType(i)
-                i = self.parseSubdef(i)
-                i = self.parseSubtrans(i)
-                break # temporary
-                
-                #* increments index at end of run NOTE: index can increment throughout code
-                i += 1
+        self.parseHeader()
+        self.parseSubword()
 
-parser = Parse()
-parser.parseAll()
-print(parser.definition)
+if __name__ == '__main__':
+    parserCalvo = Parse('imgs/calvo.png')
+    # print(parserCalvo.contents)
+    parserCalvo.parseAll()
+    print(parserCalvo.definition)
