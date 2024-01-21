@@ -17,5 +17,5 @@ class ImageToText():
 
 if __name__ == '__main__':
     imagetotext = ImageToText()
-    print(imagetotext.get_image_dataAPI('imgs/nalgada.png'))
+    print(imagetotext.get_image_dataAPI('imgs/juzgar.png'))
 

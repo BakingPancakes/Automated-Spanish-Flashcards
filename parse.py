@@ -18,7 +18,7 @@ class Parse():
         # constants
         self.length = len(self.contents) #? necessary?
         self.punctuation = string.punctuation.replace("()","")
-        self.speaker_symbols = ['#)','<']
+        self.speaker_symbols = ['#)','<','©','€','[']
         self.all_tabs = ['Dictionary','Conjugation','Examples','Phrases']
         self.word_types = ['TRANSITIVE','INTRANSITIVE','PRONOMINAL','REFLEXIVE','RECIPROCAL','MASCULINE','FEMININE','ADJECTIVE','PHRASE','INTERJECTION','PRONOUN','ADVERB','PREPOSITION','CONJUNCTION','ARTICLE']
         #! keyphrases don't consider what emojis were transcribed to (random symbols or the emoji itself)
@@ -48,10 +48,12 @@ class Parse():
 
     def parseHeader(self)-> int:
         #! Doesn't check for instances where speaker_symbols are transcribed differently
-        #!    by API (besides '#)' and '<'), or if speaker symbols are encountered above word
+        #!    by API, or if speaker symbols are encountered above word
         #!    (ad, search bar, etc.) since parsing begins at index 0
         #! Doesn't ensure ending keyword is always last thing encountered
 
+        #! For some definitions, such as juzgar, the first speaker is transcribed as two
+        #!    symbols, resulting in translation not being transcribed
         self.definition['word'] = ' '.join(self.contents[0:self.speaker_symbol_indexes[0]])
         try:
             self.definition['translation'] = ' '.join(self.contents[self.speaker_symbol_indexes[0]+1:self.speaker_symbol_indexes[1]])
@@ -135,6 +137,10 @@ class Parse():
         lettered_index = self.lettered_item_indexes.popleft()
         curr_index = lettered_index
         subtrans = []
+        if subtranslation_index > 0:
+            new_subtranslation = {'subtranslation':'a. subtranslation','example':'...'}
+            self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'].append(new_subtranslation)
+        
         while curr_index < self.length: #! terminates when reaches end of data, but doesn't add all to definition
             word = self.contents[curr_index]
             if word[0] not in string.ascii_letters: # filters out punctuation in first index
@@ -170,23 +176,27 @@ class Parse():
             word = self.contents[curr_index]      
             if word == '-':
                 curr_index += 1
+                example.append(word)
                 continue
-            if word in self.ending_keyphrases or curr_index+1 == self.length:
+
+            example.append(word)
+            # True = reached end of text
+            if word in self.ending_keyphrases or curr_index + 1 == self.length:
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'reached end'                
             # True = parse for a subtranslation again
             #! need to check if lettered_item_index is empty
-            if len(self.lettered_item_indexes) != 0 and curr_index == self.contents[self.lettered_item_indexes[0]]: #! remove item instead?
+            if len(self.lettered_item_indexes) != 0 and word == self.contents[self.lettered_item_indexes[0]]: #! remove item instead?
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found lettered_item'
 
             # True = exit to parseSubword to label new subword
-            if self.contents[curr_index].endswith('.') and self.contents[curr_index + 1][0].islower():
+            if self.contents[curr_index - 1].endswith('.') and self.contents[curr_index][0].islower():
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found subword'
             
             # True = exit to parseSubdef to label new subdefinition
-            if len(self.lettered_item_indexes) != 0 and curr_index == self.contents[self.numbered_item_indexes[0]]: #! remove item instead?
+            if len(self.numbered_item_indexes) != 0 and word == self.contents[self.numbered_item_indexes[0]]: #! remove item instead?
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found numbered_item'
             
@@ -195,7 +205,6 @@ class Parse():
                 self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found new type'
             
-            example.append(word)
             curr_index += 1
 
     def parseAll(self):
@@ -208,7 +217,7 @@ class Parse():
         self.parseSubword()
 
 if __name__ == '__main__':
-    parserCalvo = Parse('imgs/calvo.png')
+    parserCalvo = Parse('imgs/juzgar.png')
     # print(parserCalvo.contents)
     parserCalvo.parseAll()
     print(parserCalvo.definition)
