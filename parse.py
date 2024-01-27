@@ -3,7 +3,7 @@ from collections import deque
 import string
 
 from definition import Definition
-from API.ImageToText import ImageToText
+from API.APINinja import ImageToText
 
 
 class Parse():
