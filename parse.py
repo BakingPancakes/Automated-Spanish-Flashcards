@@ -3,15 +3,22 @@ from collections import deque
 import string
 
 from definition import Definition
-from API.CloudVisionAPI import detect_text
 from API.APINinja import ImageToText
+from API.CloudVisionAPI import detect_text
+from API.DocumentAI import process_document_sample
 
 
 class Parse():
-    def __init__(self,file_path):
+    def __init__(self,file_path,APINinja=False,CloudVisionAPI=False,DocumentAI=False):
         # read screenshot contents to a list
-        self.contents = detect_text(file_path)
-        
+        if APINinja:
+            itt = ImageToText()
+            self.contents = itt.get_image_dataAPI(file_path)
+        if CloudVisionAPI:
+            self.contents = detect_text(file_path)
+        if DocumentAI:
+            self.contents = process_document_sample(file_path)
+
         # initialize definition object
         self.definition = Definition().definition
         
@@ -217,7 +224,8 @@ class Parse():
         self.parseSubword()
 
 if __name__ == '__main__':
-    parserCalvo = Parse('imgs/juzgar.png')
-    print(parserCalvo.contents)
+    parserCalvo = Parse('imgs/etiquetar.png',DocumentAI=True)
+    for item in parserCalvo.contents:
+        print(item)
     # parserCalvo.parseAll()
     # print(parserCalvo.definition)

@@ -5,29 +5,30 @@ import sys
 from google.cloud import vision
 
 module_path = os.path.join(Path(__file__).resolve().parent.parent, 'helpers')
-print(module_path)
 sys.path.append(module_path)
 
 from toJPEG import toJPEG
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS']=r'C:\Users\zavie\VS_Code_Files\QuirkyProjects\SpanishFlashcards\API\deductive-tempo-411820-e309e4ebb1cb.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']=r'C:\Users\zavie\VS_Code_Files\QuirkyProjects\SpanishFlashcards\API\credentials.json'
 
 def detect_text(path)-> list:
     """Detects text in the file."""
 
     path_obj = Path(path)
 
+    # convert to jpg if png
     if (path_obj.suffix == '.png'):
         toJPEG(path)
         path_obj.with_suffix('.jpg')
 
     client = vision.ImageAnnotatorClient()
 
+    # read file contents
     with open(str(path_obj), "rb") as image_file:
         content = image_file.read()
 
+    # create vision.Image obj and call Cloud API
     image = vision.Image(content=content)
-
     response = client.text_detection(image=image)
     texts = response.text_annotations
 
