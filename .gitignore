@@ -1,5 +1,5 @@
 # Credentials JSON files
-*.json
+credentials.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
