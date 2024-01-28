@@ -3,15 +3,23 @@ from collections import deque
 import string
 
 from definition import Definition
-from API.ImageToText import ImageToText
+from API.APINinja import get_image_dataAPI
+from API.CloudVisionAPI import detect_text
+from API.DocumentAI import process_document
 
 
 class Parse():
-    def __init__(self,file_name):
+    
+
+    def __init__(self,file_path,APINinja=False,CloudVisionAPI=False,DocumentAI=False):
         # read screenshot contents to a list
-        itt = ImageToText()
-        self.contents = itt.get_image_dataAPI(file_name)
-        
+        if APINinja:
+            self.contents = get_image_dataAPI(file_path)
+        if CloudVisionAPI:
+            self.contents = detect_text(file_path)
+        if DocumentAI:
+            self.contents = process_document(file_path)
+
         # initialize definition object
         self.definition = Definition().definition
         
@@ -168,8 +176,6 @@ class Parse():
                 return 'found new type'
     
     def parseExample(self,type_index,subdefinition_index,subtranslation_index,curr_index):
-        #* Example: From last stop (first word starting in capital letter) - Need to create conditional in case begins with punctuation
-        #*          To next letter item, a lowercase letter following a period (subword), next number, word type
         #? conditions could alternatively be met by comparing the order of each index (only applicable to letter item, next number, next type) wouldn't apply to lowercase letter after a period?
         example = []
         while curr_index < self.length:
@@ -180,28 +186,31 @@ class Parse():
                 continue
 
             example.append(word)
-            # True = reached end of text
-            if word in self.ending_keyphrases or curr_index + 1 == self.length:
+
+            reached_end_of_text = (word in self.ending_keyphrases or curr_index + 1 == self.length)
+            if reached_end_of_text:
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
-                return 'reached end'                
-            # True = parse for a subtranslation again
+                return 'reached end'
+            
+            parse_new_subtranslation = len(self.lettered_item_indexes) != 0 and word == self.contents[self.lettered_item_indexes[0]]
             #! need to check if lettered_item_index is empty
-            if len(self.lettered_item_indexes) != 0 and word == self.contents[self.lettered_item_indexes[0]]: #! remove item instead?
+            if parse_new_subtranslation : #! remove item instead?
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found lettered_item'
 
-            # True = exit to parseSubword to label new subword
-            if self.contents[curr_index - 1].endswith('.') and self.contents[curr_index][0].islower():
+            parse_new_subword = self.contents[curr_index - 1].endswith('.') and self.contents[curr_index][0].islower()
+            if parse_new_subword:
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found subword'
             
-            # True = exit to parseSubdef to label new subdefinition
-            if len(self.numbered_item_indexes) != 0 and word == self.contents[self.numbered_item_indexes[0]]: #! remove item instead?
+            parse_new_subdefinition = len(self.numbered_item_indexes) != 0 and word == self.contents[self.numbered_item_indexes[0]]
+            if parse_new_subdefinition: #! remove item instead?
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found numbered_item'
             
-            # True = exit to parseType and copy last subword 
-            if self.contents[curr_index] in self.word_types:
+            # copies last subword
+            parse_new_type = self.contents[curr_index] in self.word_types
+            if parse_new_type:
                 self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found new type'
             
@@ -217,7 +226,8 @@ class Parse():
         self.parseSubword()
 
 if __name__ == '__main__':
-    parserCalvo = Parse('imgs/juzgar.png')
-    # print(parserCalvo.contents)
+    parserCalvo = Parse('imgs/calvo.png',APINinja=True)
+    # for item in parserCalvo.contents:
+        # print(item)
     parserCalvo.parseAll()
     print(parserCalvo.definition)
