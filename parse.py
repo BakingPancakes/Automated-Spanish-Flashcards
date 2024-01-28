@@ -3,14 +3,14 @@ from collections import deque
 import string
 
 from definition import Definition
+from API.CloudVisionAPI import detect_text
 from API.APINinja import ImageToText
 
 
 class Parse():
-    def __init__(self,file_name):
+    def __init__(self,file_path):
         # read screenshot contents to a list
-        itt = ImageToText()
-        self.contents = itt.get_image_dataAPI(file_name)
+        self.contents = detect_text(file_path)
         
         # initialize definition object
         self.definition = Definition().definition
@@ -218,6 +218,6 @@ class Parse():
 
 if __name__ == '__main__':
     parserCalvo = Parse('imgs/juzgar.png')
-    # print(parserCalvo.contents)
-    parserCalvo.parseAll()
-    print(parserCalvo.definition)
+    print(parserCalvo.contents)
+    # parserCalvo.parseAll()
+    # print(parserCalvo.definition)

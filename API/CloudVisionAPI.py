@@ -1,41 +1,50 @@
 import os
+from pathlib import Path
+import sys
+
 from google.cloud import vision
+
+module_path = os.path.join(Path(__file__).resolve().parent.parent, 'helpers')
+print(module_path)
+sys.path.append(module_path)
+
+from toJPEG import toJPEG
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS']=r'C:\Users\zavie\VS_Code_Files\QuirkyProjects\SpanishFlashcards\API\deductive-tempo-411820-e309e4ebb1cb.json'
 
-def detect_text(path):
+def detect_text(path)-> list:
     """Detects text in the file."""
+
+    path_obj = Path(path)
+
+    if (path_obj.suffix == '.png'):
+        toJPEG(path)
+        path_obj.with_suffix('.jpg')
 
     client = vision.ImageAnnotatorClient()
 
-    with open(path, "rb") as image_file:
+    with open(str(path_obj), "rb") as image_file:
         content = image_file.read()
 
     image = vision.Image(content=content)
 
     response = client.text_detection(image=image)
     texts = response.text_annotations
-    print("Texts:")
 
-    for text in texts:
-        print(f'\n"{text.description}"')
-
-        vertices = [
-            f"({vertex.x},{vertex.y})" for vertex in text.bounding_poly.vertices
-        ]
-
-        print("bounds: {}".format(",".join(vertices)))
-
-    
+    output_data = ((texts[0].description).split('\n'))
 
     if response.error.message:
         raise Exception(
             "{}\nFor more info on error messages, check: "
             "https://cloud.google.com/apis/design/errors".format(response.error.message)
         )
+    
+    return output_data
 
 if __name__ == '__main__':
-    detect_text('imgs/juzgar.jpg')
+
+
+    print(detect_text('imgs/desahogarse.png'))
     #example response:
     # Texts:
     #     "juzgar
