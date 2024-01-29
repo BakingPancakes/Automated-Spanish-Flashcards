@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
 import sys
-
 from google.cloud import vision
 
-module_path = os.path.join(Path(__file__).resolve().parent.parent, 'helpers')
+script_directory = Path(__file__).resolve().parent.parent
+
+module_path = os.path.join(script_directory, 'helpers')
 sys.path.append(module_path)
 
 from toJPEG import toJPEG
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS']=r'C:\Users\zavie\VS_Code_Files\QuirkyProjects\SpanishFlashcards\API\credentials.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials.json')
 
 def detect_text(path)-> list:
     """Detects text in the file."""

@@ -1,12 +1,14 @@
 import json
+from pathlib import Path
 from typing import Optional, Sequence
 import os
 
 from google.api_core.client_options import ClientOptions
-from google.cloud import documentai  # type: ignore
+from google.cloud import documentai 
 
 # add credentials to environment variable
-os.environ['GOOGLE_APPLICATION_CREDENTIALS']=r'C:\Users\zavie\VS_Code_Files\QuirkyProjects\SpanishFlashcards\API\credentials.json'
+script_directory = Path(__file__).resolve().parent.parent
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials.json')
 
 project_id = "deductive-tempo-411820"
 location = "us"
@@ -14,6 +16,8 @@ processor_id = "8db6d0408b28916b"
 file_path = "/path/to/local/pdf"
 mime_type = "image/jpeg"
 field_mask = "text,pages" 
+
+all_tabs = ['Dictionary','Conjugation','Examples','Phrases']
 
 def process_document(
     file_path: str,
@@ -76,17 +80,11 @@ def layout_to_text(layout: documentai.Document.Page.Layout, text: str) -> str:
         for segment in layout.text_anchor.text_segments
     )
 
-def format_document(document):
-    output = []
-    overall_text = document.text
-
-    ## I forgot what this segment does
-    #     return "".join(
-    #     overall_text[int(segment.start_index) : int(segment.end_index)]
-    #     for segment in layout.text_anchor.text_segments
-    # )
+def format_document(document: documentai.Document):
 
     ## uses given start_index and end_index to attempt to parse where DocumentAI believes each line begins/starts
+    # output = []
+    # overall_text = document.text
     # for paragraph in document.pages[0].paragraphs:
     #     try:
     #         start_index = paragraph.layout.text_anchor.text_segments[0].start_index
@@ -105,7 +103,7 @@ def format_document(document):
     ## Find line divides in document.text via \n
     return document.text.split('\n')
 
-def format_json(file):
+def format_json(file: str) -> list:
     '''Takes json format of image and just outputs start and end index for every paragraph.'''
     with open(file) as f:
         data = json.load(f)
@@ -121,9 +119,21 @@ def format_json(file):
         output.append(len(data['text']))
         return output
 
+def get_header_word(file: str) -> str:
+    '''Returns the predicted header word, ie the word requesting translation'''
+    document_text = process_document(file)
+    for line_index in range(len(document_text)):
+        line = document_text[line_index].split(' ')
+
+        for word in line:
+            if word in all_tabs:
+                return document_text[line_index-2]
+    
+    return "Word not found."
+
 if __name__ == '__main__':
-    # print(process_document('imgs/etiquetar.jpg'))
-    for item in (process_document('imgs/juzgar.jpg')):
-        print(item)
+    # for item in (process_document('imgs/juzgar.jpg')):
+    #     print(item)
     # for item in (format_json("raw_data/etiquetar.json")):
     #     print(item)
+    print(get_header_word('imgs/etiquetar.jpg'))
