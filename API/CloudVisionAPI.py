@@ -10,7 +10,7 @@ sys.path.append(module_path)
 
 from toJPEG import toJPEG
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials.json')
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials\credentials.json')
 
 def detect_text(path)-> list:
     """Detects text in the file."""

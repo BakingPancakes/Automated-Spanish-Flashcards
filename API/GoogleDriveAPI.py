@@ -1,4 +1,5 @@
 import os.path
+from pathlib import Path
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -7,8 +8,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/drive.metadata.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
+script_directory = Path(__file__).resolve().parent.parent
+CREDENTIALS = os.path.join(script_directory, r'API\credentials\client_secret.json')
 
 def main():
   """Shows basic usage of the Drive v3 API.
@@ -25,9 +28,7 @@ def main():
     if creds and creds.expired and creds.refresh_token:
       creds.refresh(Request())
     else:
-      flow = InstalledAppFlow.from_client_secrets_file(
-          "credentials.json", SCOPES
-      )
+      flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS, SCOPES)
       creds = flow.run_local_server(port=0)
     # Save the credentials for the next run
     with open("token.json", "w") as token:

@@ -8,7 +8,7 @@ from google.cloud import documentai
 
 # add credentials to environment variable
 script_directory = Path(__file__).resolve().parent.parent
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials.json')
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(script_directory, r'API\credentials\credentials.json')
 
 project_id = "deductive-tempo-411820"
 location = "us"
