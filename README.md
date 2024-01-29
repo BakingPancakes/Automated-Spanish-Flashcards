@@ -1,5 +1,8 @@
 # Automated Spanish Flashcards
 
+need to import google-cloud-vision, google-cloud-documentai
+credentials in \API is currently only on my local device, not on remote repo
+
 ## Overview
 ### Method 1
 (parse text directly from text given by an API to construct each word's definition)
