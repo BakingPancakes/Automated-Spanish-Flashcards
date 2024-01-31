@@ -1,4 +1,3 @@
-import ast
 from collections import deque
 import string
 
@@ -9,8 +8,6 @@ from API.DocumentAI import process_document
 
 
 class Parse():
-    
-
     def __init__(self,file_path,APINinja=False,CloudVisionAPI=False,DocumentAI=False):
         # read screenshot contents to a list
         if APINinja:
@@ -33,7 +30,6 @@ class Parse():
         self.ending_keyphrases = ['Try Premium','Unlock Premium','Get Ahead With Premium','Copyright']
 
         # store indexes of anchor-points (iterates total of 5 times + calls for index(word))
-        #! should limit symbol + tabs to only scan within first ~20 words
         self.speaker_symbol_indexes = [self.contents.index(symbol) for symbol in self.speaker_symbols if symbol in self.contents]
         self.tabs = [tab for tab in self.all_tabs if tab in self.contents] # doesn't need to find indexes
         
@@ -55,13 +51,17 @@ class Parse():
                 lettered_item = chr(ord(lettered_item) + 1)
 
     def parseHeader(self)-> int:
-        #! Doesn't check for instances where speaker_symbols are transcribed differently
-        #!    by API, or if speaker symbols are encountered above word
-        #!    (ad, search bar, etc.) since parsing begins at index 0
-        #! Doesn't ensure ending keyword is always last thing encountered
+        '''Limitations:
+        Doesn't check for instances where speaker_symbols are transcribed differently
+           by API, or if speaker symbols are encountered above word
+           (ad, search bar, etc.) since parsing begins at index 0
 
-        #! For some definitions, such as juzgar, the first speaker is transcribed as two
-        #!    symbols, resulting in translation not being transcribed
+        Doesn't ensure ending keyword is always last thing encountered
+
+        For some definitions, such as juzgar, the first speaker is transcribed as two
+           symbols, resulting in translation not being transcribed
+        '''
+
         self.definition['word'] = ' '.join(self.contents[0:self.speaker_symbol_indexes[0]])
         try:
             self.definition['translation'] = ' '.join(self.contents[self.speaker_symbol_indexes[0]+1:self.speaker_symbol_indexes[1]])
@@ -71,19 +71,17 @@ class Parse():
         self.definition['tabs'] = self.tabs
     
     def parseSubword(self)-> int:
-        #* Scan backwards from type_indexes[i] until 1) Encounters an element from 'tabs'
-        #*                                           2) Ecounters a word ending in punctuation
         subwords = []
         #! no more type_indexes -> no other sections, t.f. exit
         try:
-            type_index = self.type_indexes[0] # will be accessed again in parseType
+            type_index = self.type_indexes[0] 
             curr_index = type_index - 1
-        except: # no more sections (under a type) to parse
+        except: 
             return
         
         while curr_index > 0:
             word = self.contents[curr_index]
-            if (word in self.all_tabs) or (word in self.punctuation): # more concise if change while conditon to this?
+            if (word in self.all_tabs) or (word in self.punctuation):
                 self.definition['subword'].append(' '.join(subwords))
                 break
             subwords.insert(0,word)
@@ -96,7 +94,8 @@ class Parse():
                 self.parseSubword()
 
     def parseType(self,subword)-> int:
-        #* From type_indexes until next item in numbered_item_indexes
+        '''From type_indexes until next item in numbered_item_indexes'''
+
         #! no other numbered_items -> SS is cutoff, t.f. exit
         try:
             type_index = self.type_indexes.popleft()
@@ -110,17 +109,17 @@ class Parse():
         match self.parseSubdef(type_index,subdefinition_index):
             case 'reached end':
                 return 'reached end'
-            case 'found subword': # exit to parse subword to label new subword
+            case 'found subword': 
                 return 'found subword'
-            case 'found new type': # exit to parseType and copy last subword
+            case 'found new type': 
                 self.parseType(subword)
 
     def parseSubdef(self,type_index,subdefinition_index)-> int:
-        #* From numbered[i] until next item in lettered_item_indexes
+        '''From numbered[i] until next item in lettered_item_indexes'''
+
         #! need to check for empty lettered_items_indexes?
         number_index = self.numbered_item_indexes.popleft()
-        lettered_index = self.lettered_item_indexes[0] # will be accessed again in parseSubtrans
-
+        lettered_index = self.lettered_item_indexes[0]
         new_subdefinition = {'subdefinitions':[
             {'subdefinition':'1. (subdefinition)','subtranslations':[
                 {'subtranslation':'a. subtranslation','example':'...'}
@@ -133,15 +132,20 @@ class Parse():
         match self.parseSubtrans(type_index,subdefinition_index, subtranslation_index):
             case 'reached end':
                 return 'reached end'
-            case 'found subword': # exit to parse subword to label new subword
+            case 'found subword': 
                 return 'found subword'
-            case 'found numbered_item': # exit to parseSubdef to label new subdefinition
+            case 'found numbered_item': 
                 self.parseSubdef(type_index + 1,subdefinition_index + 1)
-            case 'found new type': # exit to parseType and copy last subword
+            case 'found new type': 
                 return 'found new type'
 
     def parseSubtrans(self,type_index,subdefinition_index, subtranslation_index)-> int:
-        #* From lettered_item_indexes until word starting in capital letter
+        '''From lettered_item_indexes until word starting in capital letter.
+            Limitations:
+                The while loop terminates when reaches end of data,
+                but doesn't add all to definition
+        '''
+
         lettered_index = self.lettered_item_indexes.popleft()
         curr_index = lettered_index
         subtrans = []
@@ -149,9 +153,10 @@ class Parse():
             new_subtranslation = {'subtranslation':'a. subtranslation','example':'...'}
             self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'].append(new_subtranslation)
         
-        while curr_index < self.length: #! terminates when reaches end of data, but doesn't add all to definition
+        while curr_index < self.length:
             word = self.contents[curr_index]
-            if word[0] not in string.ascii_letters: # filters out punctuation in first index
+            begins_with_punctuation = word[0] not in string.ascii_letters
+            if begins_with_punctuation:
                 word = word[0:-1]
             if word[0].isupper():
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['subtranslation'] = ' '.join(subtrans)
@@ -166,13 +171,13 @@ class Parse():
             case 'found lettered_item':
                 self.parseSubtrans(type_index,subdefinition_index,subtranslation_index + 1)
             
-            case 'found subword': # exit to parse subword to label new subword
+            case 'found subword': 
                 return 'found subword'
             
-            case 'found numbered_item': # exit to parseSubdef to label new subdefinition
+            case 'found numbered_item': 
                 return 'found numbered_item'
             
-            case 'found new type': # exit to parseType and copy last subword
+            case 'found new type':
                 return 'found new type'
     
     def parseExample(self,type_index,subdefinition_index,subtranslation_index,curr_index):
@@ -208,7 +213,6 @@ class Parse():
                 self.definition['details'][type_index]['subdefinitions'][subdefinition_index]['subtranslations'][subtranslation_index]['example'] = ' '.join(example)
                 return 'found numbered_item'
             
-            # copies last subword
             parse_new_type = self.contents[curr_index] in self.word_types
             if parse_new_type:
                 self.definition['details'][subdefinition_index]['subdefinitions'][subtranslation_index]['example'] = ' '.join(example)
@@ -221,7 +225,6 @@ class Parse():
             finding the position of each in relation to each other.
             Returns the labeled definition information."""
 
-        # TODO: Pop-ups before word, and 'Usage note' after translation
         self.parseHeader()
         self.parseSubword()
 
